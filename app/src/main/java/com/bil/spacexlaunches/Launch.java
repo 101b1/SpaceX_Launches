@@ -13,19 +13,21 @@ public class Launch {
     private String name;
     private String description;
     private Date date;
-    private Bitmap label;
+    //private Bitmap label;
     private String article;
+    public String imageURL;
 
     public Launch(){
 
     }
 
-    public Launch(String name, String description, Date date, Bitmap label, String article){
+    public Launch(String name, String description, Date date, String imageURL, String article){
         this.name = name;
         this.date = date;
         this.description = description;
-        this.label = label;
+        //this.label = label;
         this.article = article;
+        this.imageURL = imageURL;
     }
 
     String getNam(){
@@ -44,9 +46,9 @@ public class Launch {
         return date;
     }
 
-    Bitmap getLabel(){
+   /* Bitmap getLabel(){
         return label;
-    }
+    }*/
 
     void setNam(String name){
         this.name = name;
@@ -60,9 +62,9 @@ public class Launch {
         this.date = date;
     }
 
-    void setLabel(Bitmap label){
+    /*void setLabel(Bitmap label){
         this.label = label;
-    }
+    }*/
 
     void setArticle(String art){ this.article = art;}
 }
