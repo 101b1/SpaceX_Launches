@@ -137,6 +137,10 @@ public class MainActivity extends AppCompatActivity implements DownloadFragment.
 
     @Override
     public void downloaded(List<Launch> dlLaunches, Map<String, Bitmap> dlPatches){
+        //IF EXISTS DB => IF NEW CONTENT =>  => REFRESH DB
+        //                ELSE GET FROM DB
+        //ELSE CREATE DB
+
         LaunchesFragment fr = new LaunchesFragment();
         FragmentTransaction transaction = getFragmentManager().beginTransaction();
         fr.setContent(dlLaunches, dlPatches);

@@ -3,6 +3,8 @@ package com.bil.spacexlaunches;
 
 import android.app.Activity;
 import android.app.FragmentManager;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -45,6 +47,8 @@ public class DownloadFragment extends android.app.Fragment {
     JSONArray mainJSON;
     //Buffer var to save network responses
     final String api = "https://api.spacexdata.com/v2/launches?launch_year=2017";
+    private DownloadListener listener;
+    SharedPreferences prefs;
 
     public DownloadFragment() {
         // Required empty public constructor
@@ -54,22 +58,21 @@ public class DownloadFragment extends android.app.Fragment {
         void downloaded(List<Launch> dlLaunches, Map<String, Bitmap> dlPatches);
     }
 
-    private DownloadListener listener;
-
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         requestQueue = Volley.newRequestQueue(container.getContext());
         imageQueue = Volley.newRequestQueue(container.getContext());
+        prefs = getActivity()
+                .getSharedPreferences("preferences", Context.MODE_PRIVATE);
+
         return inflater.inflate(R.layout.fragment_download, container, false);
     }
 
     @Override
     public void onStart(){
         super.onStart();
-
         getAPIResponse();
     }
 
@@ -80,6 +83,22 @@ public class DownloadFragment extends android.app.Fragment {
                     @Override
                     public void onResponse(JSONArray response) {
                         mainJSON = response;
+                        //
+                        //CHECK RESPONSE HASH & SAVED HASH
+                        //IF NO SAVED HASH => SAVE
+                        //IF SAVED == RESPONSE, LISTENER.DOWNLOADED()
+                        //ELSE CONTINUE
+                        //
+                        if (prefs.contains("json_hash")){
+                            int hash = 0;
+                            prefs.getInt("json_hash", hash);
+                            if(hash == mainJSON.hashCode()){
+                                listener.downloaded(null, null);
+                            }
+                        }else{
+                            prefs.edit().putInt("json_hash", mainJSON.hashCode()).apply();
+                        }
+
                         //launches = new Launch[mainJSON.length()];
                         try {
                             parseResponse();

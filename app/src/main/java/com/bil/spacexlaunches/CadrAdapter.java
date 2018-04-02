@@ -38,8 +38,6 @@ class CardAdapter extends RecyclerView.Adapter<CardAdapter.ViewHolder> {
     private Map<String, Bitmap> patches = new HashMap<>();
     //RequestQueue imageQueue;
 
-
-
     public static class ViewHolder extends RecyclerView.ViewHolder {
         private CardView cardView;
 
