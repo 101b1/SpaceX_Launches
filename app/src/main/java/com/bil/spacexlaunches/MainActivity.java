@@ -1,7 +1,11 @@
 package com.bil.spacexlaunches;
 
 import android.app.FragmentTransaction;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -21,6 +25,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -136,11 +143,35 @@ public class MainActivity extends AppCompatActivity implements DownloadFragment.
     }
 
     @Override
-    public void downloaded(List<Launch> dlLaunches, Map<String, Bitmap> dlPatches){
+    public void downloaded(List<Launch> dlLaunches, Map<String, Bitmap> dlPatches) throws FileNotFoundException {
         //IF EXISTS DB => IF NEW CONTENT =>  => REFRESH DB
-        //                ELSE GET FROM DB
+        //                ELSE GET FROM DB / USE DB CURSOR IN ADAPTER???
         //ELSE CREATE DB
-
+        LaunchesDatabaseHelper dbHelper = new LaunchesDatabaseHelper(this);
+        if (dlLaunches != null){
+            dbHelper.deleteContent();
+            dbHelper.insertContent(dlLaunches);
+        } else {
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
+            Cursor cursor =  db.query(dbHelper.getDatabaseName(), null, null,
+                                            null, null, null, null);
+            if(cursor.moveToFirst()){
+                while(!cursor.isLast()){
+                    dlLaunches.add(new Launch(cursor.getString(0), //NAME
+                                                cursor.getString(1), //DESC
+                                                new Date(Long.parseLong(cursor.getString(2))),//DATE
+                                                cursor.getString(3),//ARTIC
+                                                cursor.getString(4),//URL
+                                                cursor.getString(5),//PATH
+                                Long.parseLong(cursor.getString(2))));
+                    //File file  = new File(cursor.getString(5));
+                    //FileInputStream  fis = new FileInputStream(file.getAbsolutePath());
+                    Bitmap tmpBit = BitmapFactory.decodeFile(cursor.getString(5));
+                    dlPatches.put(cursor.getString(4), tmpBit);
+                    cursor.moveToNext();
+                }
+            }
+        }
         LaunchesFragment fr = new LaunchesFragment();
         FragmentTransaction transaction = getFragmentManager().beginTransaction();
         fr.setContent(dlLaunches, dlPatches);

@@ -27,6 +27,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -55,7 +58,7 @@ public class DownloadFragment extends android.app.Fragment {
     }
 
     static interface DownloadListener{
-        void downloaded(List<Launch> dlLaunches, Map<String, Bitmap> dlPatches);
+        void downloaded(List<Launch> dlLaunches, Map<String, Bitmap> dlPatches) throws FileNotFoundException;
     }
 
     @Override
@@ -93,18 +96,25 @@ public class DownloadFragment extends android.app.Fragment {
                             int hash = 0;
                             prefs.getInt("json_hash", hash);
                             if(hash == mainJSON.hashCode()){
-                                listener.downloaded(null, null);
+                                try {
+                                    listener.downloaded(null, null);
+                                } catch (FileNotFoundException e) {
+                                    e.printStackTrace();
+                                }
+                                return;
                             }
-                        }else{
-                            prefs.edit().putInt("json_hash", mainJSON.hashCode()).apply();
-                        }
 
-                        //launches = new Launch[mainJSON.length()];
+                        }//else{
+                        prefs.edit().putInt("json_hash", mainJSON.hashCode()).apply();
                         try {
                             parseResponse();
                         }catch (JSONException e) {
                             e.printStackTrace();
                         }
+                        //}
+
+                        //launches = new Launch[mainJSON.length()];
+
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -126,7 +136,8 @@ public class DownloadFragment extends android.app.Fragment {
     //Parsing every single launch information from JSON object
     Launch parseObject(JSONObject object, int pos) throws JSONException {
         Launch tmp = new Launch();
-        tmp.setDat(new Date(object.getLong("launch_date_unix")));
+        tmp.unixTime = object.getLong("launch_date_unix");
+        tmp.setDat(new Date(tmp.unixTime));
         tmp.setDescription(object.getString("details"));
         //getLaunchLabel(object.getJSONObject("links").getString("mission_patch"), pos);
         tmp.imageURL = object.getJSONObject("links").getString("mission_patch");
@@ -145,7 +156,12 @@ public class DownloadFragment extends android.app.Fragment {
                         if (patches.size() == launches.size())
                         {
                             //call fragment transaction
-                            listener.downloaded(launches, patches);
+                            savePatchesToStorage();
+                            try {
+                                listener.downloaded(launches, patches);
+                            } catch (FileNotFoundException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }, 1024, 1024, ImageView.ScaleType.CENTER_CROP, Bitmap.Config.RGB_565, new Response.ErrorListener() {
@@ -155,6 +171,29 @@ public class DownloadFragment extends android.app.Fragment {
             }
         });
         imageQueue.add(request);
+    }
+    //
+    //THIS MUST BE IN A SEPARATE THREAD!!!
+    //
+    private void savePatchesToStorage(){
+        File dir = getContext().getFilesDir();
+        if (dir.listFiles().length != 0) {
+            for (File file : dir.listFiles()) {
+                file.delete();
+            }
+        }
+        for (Launch launch: launches){
+            File file = new File(dir, launch.getNam()+".png");
+            launch.patchPath = file.getPath();
+            try{
+                FileOutputStream fos = new FileOutputStream(file);
+                patches.get(launch.imageURL).compress(Bitmap.CompressFormat.PNG, 90,
+                                                        fos);
+                fos.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override

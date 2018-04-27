@@ -13,21 +13,27 @@ public class Launch {
     private String name;
     private String description;
     private Date date;
-    //private Bitmap label;
     private String article;
     public String imageURL;
+    public String patchPath;
+    public long unixTime;
 
     public Launch(){
 
     }
 
-    public Launch(String name, String description, Date date, String imageURL, String article){
+    public Launch(String name, String description, Date date, String article, String imageURL,
+                  String path, long uTime){
+
         this.name = name;
         this.date = date;
         this.description = description;
         //this.label = label;
         this.article = article;
         this.imageURL = imageURL;
+        this.patchPath = path;
+        this.unixTime = uTime;
+
     }
 
     String getNam(){
@@ -45,6 +51,8 @@ public class Launch {
     Date getDate(){
         return date;
     }
+
+    String getPatchPath(){ return patchPath; }
 
    /* Bitmap getLabel(){
         return label;
@@ -67,4 +75,6 @@ public class Launch {
     }*/
 
     void setArticle(String art){ this.article = art;}
+
+    void setPatchPath(String path){ this.patchPath = path;}
 }
