@@ -3,9 +3,14 @@ package com.bil.spacexlaunches;
 
 import android.app.Activity;
 import android.app.FragmentManager;
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.RecyclerView;
@@ -92,25 +97,47 @@ public class DownloadFragment extends android.app.Fragment {
                         //IF SAVED == RESPONSE, LISTENER.DOWNLOADED()
                         //ELSE CONTINUE
                         //
+                        try {
                         if (prefs.contains("json_hash")){
-                            int hash = 0;
-                            prefs.getInt("json_hash", hash);
-                            if(hash == mainJSON.hashCode()){
+                            int hash = prefs.getInt("json_hash", 0);
+                            int dlhash = mainJSON.hashCode();
+                            LaunchesDatabaseHelper dbHelper = new LaunchesDatabaseHelper(getContext());
+                                if(hash == dlhash){
+                                    SQLiteDatabase db = dbHelper.getReadableDatabase();
+                                    Cursor cursor =  db.query(dbHelper.getDatabaseName(), null, null,
+                                            null, null, null, null);
+                                    if(cursor.moveToFirst()){
+                                        while(!cursor.isLast()){
+                                            launches.add(new Launch(cursor.getString(0), //NAME
+                                                    cursor.getString(1), //DESC
+                                                    new Date(Long.parseLong(cursor.getString(2))),//DATE
+                                                    cursor.getString(3),//ARTIC
+                                                    cursor.getString(4),//URL
+                                                    cursor.getString(5),//PATH
+                                                    Long.parseLong(cursor.getString(2))));
+                                            //File file  = new File(cursor.getString(5));
+                                            //FileInputStream  fis = new FileInputStream(file.getAbsolutePath());
+                                            Bitmap tmpBit = BitmapFactory.decodeFile(cursor.getString(5));
+                                            patches.put(cursor.getString(4), tmpBit);
+                                            cursor.moveToNext();
+                                        }
+                                    }
+                                    db.close();
+
+                            }else{
                                 try {
-                                    listener.downloaded(null, null);
-                                } catch (FileNotFoundException e) {
+                                    prefs.edit().putInt("json_hash", mainJSON.hashCode()).apply();
+                                    parseResponse();
+                                } catch (JSONException e) {
                                     e.printStackTrace();
                                 }
                                 return;
                             }
-
-                        }//else{
-                        prefs.edit().putInt("json_hash", mainJSON.hashCode()).apply();
-                        try {
-                            parseResponse();
-                        }catch (JSONException e) {
-                            e.printStackTrace();
                         }
+                        listener.downloaded(launches, patches);
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
                         //}
 
                         //launches = new Launch[mainJSON.length()];
@@ -131,8 +158,9 @@ public class DownloadFragment extends android.app.Fragment {
         for (int i=0; i<mainJSON.length(); i++){
             launches.add(parseObject(mainJSON.getJSONObject(i), i));
         }
-        //setLaunchPatches();
+        saveLaunchInfo(launches);
     }
+
     //Parsing every single launch information from JSON object
     Launch parseObject(JSONObject object, int pos) throws JSONException {
         Launch tmp = new Launch();
@@ -172,28 +200,46 @@ public class DownloadFragment extends android.app.Fragment {
         });
         imageQueue.add(request);
     }
-    //
-    //THIS MUST BE IN A SEPARATE THREAD!!!
-    //
+
+    private void saveLaunchInfo(final List<Launch> launches){
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                LaunchesDatabaseHelper helper = new LaunchesDatabaseHelper(getContext());
+                SQLiteDatabase db = helper.getWritableDatabase();
+                db.close();
+                helper.deleteContent();
+                helper.insertContent(launches);
+            }
+        });
+        thread.start();
+    }
+
     private void savePatchesToStorage(){
-        File dir = getContext().getFilesDir();
-        if (dir.listFiles().length != 0) {
-            for (File file : dir.listFiles()) {
-                file.delete();
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                File dir = getContext().getFilesDir();
+                if (dir.listFiles().length != 0) {
+                    for (File file : dir.listFiles()) {
+                        file.delete();
+                    }
+                }
+                for (Launch launch: launches){
+                    File file = new File(dir, launch.getNam()+".png");
+                    launch.patchPath = file.getPath();
+                    try{
+                        FileOutputStream fos = new FileOutputStream(file);
+                        patches.get(launch.imageURL).compress(Bitmap.CompressFormat.PNG, 90,
+                                fos);
+                        fos.close();
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
             }
-        }
-        for (Launch launch: launches){
-            File file = new File(dir, launch.getNam()+".png");
-            launch.patchPath = file.getPath();
-            try{
-                FileOutputStream fos = new FileOutputStream(file);
-                patches.get(launch.imageURL).compress(Bitmap.CompressFormat.PNG, 90,
-                                                        fos);
-                fos.close();
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }
+        });
+        thread.start();
     }
 
     @Override
@@ -201,6 +247,5 @@ public class DownloadFragment extends android.app.Fragment {
         super.onAttach(activity);
         this.listener = (DownloadListener)activity;
     }
-
 
 }

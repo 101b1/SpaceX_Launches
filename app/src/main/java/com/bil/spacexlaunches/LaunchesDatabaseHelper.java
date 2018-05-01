@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class LaunchesDatabaseHelper extends SQLiteOpenHelper {
 
-    private static final String DB_NAME = "launches_db";
+    private static final String DB_NAME = "launches";
     private static final int DB_VERSION = 1;
 
     LaunchesDatabaseHelper(Context context){
@@ -44,9 +44,9 @@ public class LaunchesDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public void insertContent(List<Launch> launcList){
-        SQLiteDatabase db = this.getWritableDatabase();
-        for (Launch launch: launcList){
+    public void insertContent(List<Launch> launchList){
+        SQLiteDatabase db = getWritableDatabase();
+        for (Launch launch: launchList){
             ContentValues value = new ContentValues();
             value.put("NAME", launch.getNam());
             value.put("DESCRIPTION", launch.getDescription());
@@ -60,7 +60,7 @@ public class LaunchesDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void deleteContent(){
-        SQLiteDatabase db = this.getWritableDatabase();
+        SQLiteDatabase db = getWritableDatabase();
         db.delete(DB_NAME, null, null);
         db.close();
     }
