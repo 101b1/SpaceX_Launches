@@ -44,8 +44,8 @@ public class LaunchesDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public void insertContent(List<Launch> launchList){
-        SQLiteDatabase db = getWritableDatabase();
+    public void insertContent(SQLiteDatabase db, List<Launch> launchList){
+        //SQLiteDatabase db = getWritableDatabase();
         for (Launch launch: launchList){
             ContentValues value = new ContentValues();
             value.put("NAME", launch.getNam());
@@ -56,12 +56,12 @@ public class LaunchesDatabaseHelper extends SQLiteOpenHelper {
             value.put("IMAGE_PATH", launch.patchPath);
             db.insert(DB_NAME, null, value);
         }
-        db.close();
+        //db.close();
     }
 
-    public void deleteContent(){
-        SQLiteDatabase db = getWritableDatabase();
+    public void deleteContent(SQLiteDatabase db){
+        //SQLiteDatabase db = getWritableDatabase();
         db.delete(DB_NAME, null, null);
-        db.close();
+        //db.close();
     }
 }

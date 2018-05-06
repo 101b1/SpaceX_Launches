@@ -100,41 +100,40 @@ public class DownloadFragment extends android.app.Fragment {
                         try {
                         if (prefs.contains("json_hash")){
                             int hash = prefs.getInt("json_hash", 0);
-                            int dlhash = mainJSON.hashCode();
+                            int dlhash = stringHash(mainJSON.toString());
                             LaunchesDatabaseHelper dbHelper = new LaunchesDatabaseHelper(getContext());
                                 if(hash == dlhash){
                                     SQLiteDatabase db = dbHelper.getReadableDatabase();
                                     Cursor cursor =  db.query(dbHelper.getDatabaseName(), null, null,
                                             null, null, null, null);
                                     if(cursor.moveToFirst()){
-                                        while(!cursor.isLast()){
-                                            launches.add(new Launch(cursor.getString(0), //NAME
-                                                    cursor.getString(1), //DESC
-                                                    new Date(Long.parseLong(cursor.getString(2))),//DATE
-                                                    cursor.getString(3),//ARTIC
-                                                    cursor.getString(4),//URL
-                                                    cursor.getString(5),//PATH
-                                                    Long.parseLong(cursor.getString(2))));
+                                        while(!cursor.isAfterLast()){
+                                            launches.add(new Launch(cursor.getString(1), //NAME
+                                                    cursor.getString(2), //DESC
+                                                    new Date(Long.parseLong(cursor.getString(3))),//DATE
+                                                    cursor.getString(4),//ARTIC
+                                                    cursor.getString(5),//URL
+                                                    cursor.getString(6),//PATH
+                                                    Long.parseLong(cursor.getString(3))));
                                             //File file  = new File(cursor.getString(5));
                                             //FileInputStream  fis = new FileInputStream(file.getAbsolutePath());
-                                            Bitmap tmpBit = BitmapFactory.decodeFile(cursor.getString(5));
-                                            patches.put(cursor.getString(4), tmpBit);
+                                            Bitmap tmpBit = BitmapFactory.decodeFile(cursor.getString(6));
+                                            patches.put(cursor.getString(5), tmpBit);
                                             cursor.moveToNext();
                                         }
                                     }
                                     db.close();
-
-                            }else{
-                                try {
-                                    prefs.edit().putInt("json_hash", mainJSON.hashCode()).apply();
-                                    parseResponse();
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
-                                }
-                                return;
+                                    listener.downloaded(launches, patches);
+                                    return;
                             }
-                        }
-                        listener.downloaded(launches, patches);
+                        } try {
+                                prefs.edit().putInt("json_hash", stringHash(mainJSON.toString())).apply();
+                                parseResponse();
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+
+
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
@@ -158,7 +157,15 @@ public class DownloadFragment extends android.app.Fragment {
         for (int i=0; i<mainJSON.length(); i++){
             launches.add(parseObject(mainJSON.getJSONObject(i), i));
         }
-        saveLaunchInfo(launches);
+        //saveLaunchInfo(launches);
+    }
+
+    private int stringHash(String str){
+        int result = 1;
+        for (int i = 0; i < str.length(); i++){
+            result += 8*str.charAt(i);
+        }
+        return result;
     }
 
     //Parsing every single launch information from JSON object
@@ -201,19 +208,19 @@ public class DownloadFragment extends android.app.Fragment {
         imageQueue.add(request);
     }
 
-    private void saveLaunchInfo(final List<Launch> launches){
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                LaunchesDatabaseHelper helper = new LaunchesDatabaseHelper(getContext());
-                SQLiteDatabase db = helper.getWritableDatabase();
-                db.close();
-                helper.deleteContent();
-                helper.insertContent(launches);
-            }
-        });
-        thread.start();
-    }
+//    private void saveLaunchInfo(final List<Launch> launches){
+//        Thread thread = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                LaunchesDatabaseHelper helper = new LaunchesDatabaseHelper(getContext());
+//                SQLiteDatabase db = helper.getWritableDatabase();
+//                db.close();
+//                helper.deleteContent();
+//                helper.insertContent(launches);
+//            }
+//        });
+//        thread.start();
+//    }
 
     private void savePatchesToStorage(){
         Thread thread = new Thread(new Runnable() {
@@ -226,7 +233,7 @@ public class DownloadFragment extends android.app.Fragment {
                     }
                 }
                 for (Launch launch: launches){
-                    File file = new File(dir, launch.getNam()+".png");
+                    File file = new File(dir, launch.getNam() + launches.indexOf(launch)+".png");
                     launch.patchPath = file.getPath();
                     try{
                         FileOutputStream fos = new FileOutputStream(file);
@@ -237,6 +244,11 @@ public class DownloadFragment extends android.app.Fragment {
                         e.printStackTrace();
                     }
                 }
+                LaunchesDatabaseHelper helper = new LaunchesDatabaseHelper(getContext());
+                SQLiteDatabase db = helper.getWritableDatabase();
+                helper.deleteContent(db);
+                helper.insertContent(db, launches);
+                db.close();
             }
         });
         thread.start();
